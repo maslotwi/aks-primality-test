@@ -3,6 +3,7 @@
 
 #include <gmp.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct {
     size_t length;
@@ -16,5 +17,6 @@ void poly_deinit(poly_t p);
 void poly_mod_multiply(poly_t result, const poly_t a, const poly_t b, const mpz_t modulus);
 void poly_power_mod(poly_t result, const poly_t base, const mpz_t exponent, const mpz_t modulus);
 void poly_copy(poly_t dest, const poly_t src);
+void poly_memset(poly_t p, uint64_t value);
 
 #endif

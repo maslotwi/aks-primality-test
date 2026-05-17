@@ -10,7 +10,7 @@ set(CMAKE_C_COMPILER "clang")
 project(kryptografia-aks C)
 
 # Define the main executable
-add_executable(${PROJECT_NAME} src/main.c)
+add_executable(${PROJECT_NAME} src/main.c src/poly.c src/poly.h)
 
 # ---------------------------------------------------------
 # Link the standard math library (-lm)
