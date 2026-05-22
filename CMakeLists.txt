@@ -3,9 +3,16 @@ cmake_minimum_required(VERSION 3.14)
 # Tell CMake to generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 1. Force CMake to use Clang for the main project
+# 1. Fallback: Check if Clang is installed, otherwise use GCC
 # NOTE: This must be set BEFORE the project() command!
-set(CMAKE_C_COMPILER "clang")
+find_program(CLANG_PATH clang)
+if(CLANG_PATH)
+    set(CMAKE_C_COMPILER "clang")
+    message(STATUS "Selected compiler: clang")
+else()
+    set(CMAKE_C_COMPILER "gcc")
+    message(STATUS "Clang not found, falling back to gcc")
+endif()
 
 project(kryptografia-aks C)
 
@@ -24,7 +31,7 @@ find_library(GMP_LIBRARY NAMES gmp libgmp)
 
 if(GMP_INCLUDE_DIR AND GMP_LIBRARY)
     message(STATUS "Found system GMP: ${GMP_LIBRARY}")
-    
+
     # Link the system GMP to the project
     target_include_directories(${PROJECT_NAME} PRIVATE ${GMP_INCLUDE_DIR})
     target_link_libraries(${PROJECT_NAME} PRIVATE ${GMP_LIBRARY})
@@ -40,19 +47,19 @@ else()
                             "Please install GMP system-wide or pull the GMP source into vendor/GMP.")
     endif()
 
-    message(STATUS "Building GMP from vendor directory using GCC...")
+    message(STATUS "Building GMP from vendor directory using ${CMAKE_C_COMPILER}...")
 
     include(ExternalProject)
 
     set(GMP_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/gmp_build")
     set(GMP_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/gmp_install")
 
-    # 3. Build GMP using GCC via ExternalProject
+    # 3. Build GMP using the selected compiler via ExternalProject
     ExternalProject_Add(gmp_vendor
         SOURCE_DIR "${GMP_VENDOR_DIR}"
         PREFIX "${GMP_BUILD_DIR}"
-        # We prepend 'env CC=gcc' to force GMP's configure script to use GCC
-        CONFIGURE_COMMAND env CC=gcc "${GMP_VENDOR_DIR}/configure"
+        # We prepend 'env CC=${CMAKE_C_COMPILER}' to force GMP's configure script to use the chosen compiler
+        CONFIGURE_COMMAND env CC=${CMAKE_C_COMPILER} "${GMP_VENDOR_DIR}/configure"
                           "--prefix=${GMP_INSTALL_DIR}"
                           "--disable-shared"
                           "--enable-static"
