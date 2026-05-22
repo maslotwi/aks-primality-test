@@ -59,8 +59,8 @@ $ (X+a)^n equiv X^n + a #h(2mm) (mod X^r - 1, n) $
 Sprawdzając ten warunek dla określonego przedziału wartości parametru $a$, aż do 
 wyliczonego analitycznie limitu, algorytm zapewnia matematycznie absolutną 
 gwarancję pierwszości badanego wejścia. Głównym celem mojego projektu było 
-przeniesienie tej czystej teorii matematycznej na poziom wysoce zoptymalizowanego 
-kodu w języku C, korzystającego z zewnętrznej biblioteki GMP (GNU Multiple Precision 
+przeniesienie tej czystej teorii matematycznej na zoptymalizowany, bezpieczny i wydajny 
+kodu w języku C, korzystający z zewnętrznej biblioteki GMP (GNU Multiple Precision 
 Arithmetic Library) do obsługi wielkich liczb całkowitych.
 
 = Matematyczny Schemat Działania Algorytmu
@@ -94,7 +94,7 @@ publikacją naukową.
 
 = Modyfikacje Architektoniczne i Optymalizacje Sprzętowe
 
-Tłumaczenie akademickiej matematyki dyskretnej na wydajny i bezpieczny kod 
+Tłumaczenie akademickiej matematyki dyskretnej n kod 
 w języku C wymagało ode mnie podjęcia kilku kluczowych decyzji inżynierskich. 
 Zaimplementowałem szereg krytycznych optymalizacji niskopoziomowych, które 
 zwiększają kulturę pracy programu na nowoczesnych architekturach CPU.
@@ -105,26 +105,26 @@ warunek $1 < gcd(a, n) < n$ dla wszystkich wartości $a lt.eq r$, co ma na celu
 wyłapanie małych czynników pierwszych. Zamiast pisać oddzielną, kosztowną 
 pętlę do wyliczania NWD przy pomocy algorytmu Euklidesa (która wprowadzałaby 
 złożoność $O(r log n)$), zintegrowałem to sprawdzenie bezpośrednio z pętlą 
-poszukującą odpowiedniego parametru $r$.
+poszukującą odpowiedniego parametru $r$ w poprzednim kroku.
 
 Ponieważ mój program testuje kolejne wartości sekwencyjnie (inkrementując $r$ 
-od wartości początkowej $2$ wzwyż), jeśli liczba $n$ posiada jakikolwiek wspólny 
-dzielnik z $r$, badana reszta z dzielenia $n$ przez obecne $r$ wyniesie dokładnie 
-$0$. Mój kod naturalnie przechwytuje najmniejszy czynnik pierwszy na długo przed 
-tym, jak licznik pętli osiągnie problematyczne wartości złożone. Pozwoliło to 
+od wartości początkowej $2$ wzwyż), jeśli liczba $n$ posiada jakikolwiek różny od $1$ wspólny 
+dzielnik z $a$, to ten wspólny dzielnik wystąpi we wcześniejszej iteracji i z definicji
+NWD reszta z dzielenia $n$ przez ten dzielnik będzie równa zero. Pozwoliło to 
 na całkowite wyeliminowanie dedykowanej funkcji NWD ze struktury programu.
 
-== Optymalizacja Leniwego Modulo (Lazy Modulo)
+== Pominęcie Redukcji Modulo w Pętli Mnożenia Wielomianów
 Mnożenie wielomianów o dużych współczynnikach wiąże się z ogromnym obciążeniem 
-jednostki centralnej, wynikającym z ciągłych operacji alokacji i zwalniania 
+programu i systemu operacyjnego, wynikającym z ciągłych operacji alokacji i zwalniania 
 pamięci podręcznej dla struktur wielkich liczb biblioteki GMP. Aby zredukować 
-ten narzut obliczeniowy, wykorzystałem dedykowaną instrukcję `mpz_addmul`.
+ten narzut obliczeniowy, wykorzystałem skorzystałem z własności arytmetyki modularnej.
 
 Zamiast wykonywać kosztowną redukcję modulo po każdym pojedynczym mnożeniu 
 współczynników wewnątrz zagnieżdżonych pętli, pozwoliłem wewnętrznej strukturze 
 na nieskrępowaną akumulację surowych sum. Maksymalna teoretyczna wartość takiego 
 akumulatora wynosi $r dot.op n^2$, co bez problemu mieści się w pamięci
-struktur GMP bez ryzyka przepełnienia rejestrów. Dopiero po zsumowaniu wszystkich 
+struktur GMP bez ryzyka przepełnienia pamięci, ani zbyt wielkiego dodatkowego
+narzutu obliczeniowego. Dopiero po zsumowaniu wszystkich 
 odpowiednich wyrazów dla danego stopnia wielomianu wykonuję pojedyncze wywołanie 
 redukcji modulo. Rozwiązanie to zmniejszyło liczbę wywołań kosztownej funkcji 
 `mpz_mod` z rzędu wielu milionów do zaledwie kilku tysięcy na jedną iterację.
@@ -136,10 +136,9 @@ standardowej biblioteki zmiennoprzecinkowej `<math.h>` i rzutowania na typ
 `double` przy dużych danych wejściowych nieuchronnie skutkowałoby utratą 
 precyzji bitowej lub błędami zaokrągleń.
 
-Rozwiązałem ten problem, implementując własną, czysto całkowitoliczbową 
-wersję algorytmu Newtona-Raphsona (znaną jako metoda babilońska). Zastosowałem 
-w niej sztywne, bezwarunkowe filtry wejściowe oraz zmodyfikowany warunek 
-zakończenia pętli. Dzięki temu algorytm nie wpada w pułapkę nieskończonej 
+Rozwiązałem ten problem, implementując całkowitoliczbową 
+wersję metody pierwiastkowania Newtona-Raphsona. Zastosowałem zmodyfikowany warunek 
+zakończenia pętli, dzięki temu algorytm nie wpada w pułapkę nieskończonej 
 oscylacji między dwoma sąsiednimi stanami dyskretnymi, co jest powszechną wadą 
 naiwnych implementacji tej metody na liczbach całkowitych.
 
@@ -150,7 +149,7 @@ wielomianów modulo. Zwracam uwagę na makro `mpz_sgn`, które wykonuje się w
 stałym czasie $O(1)$ poprzez bezpośredni odczyt wewnętrznego pola rozmiaru 
 struktury GMP. Pozwala ono na natychmiastowe pominięcie zerowych elementów, 
 co daje ogromne przyspieszenie obliczeń przy rzadkich wielomianach początkowych.
-
+#pagebreak()
 ```c
 void poly_mod_multiply(
   poly_t result, const poly_t a, 
@@ -182,21 +181,21 @@ void poly_mod_multiply(
 ```
 
 Drugim najważniejszym elementem systemu jest pętla wyszukująca właściwą wartość 
-rzędu multiplikatywnego. To w niej zintegrowałem niejawny test podzielności:
+rzędu multiplikatywnego. To w niej zintegrowałem niejawne NWD:
 
 ```c
 uint64_t r = 2;
 while(true) {
     if(mpz_cmp_ui(n, r) <= 0) return true;
     
-    // Niejawne sprawdzenie podzielności zastępujące klasyczny algorytm Euklidesa
+// Niejawne NWD, eliminujące klasyczny algorytm Euklidesa
     uint64_t remainder = mpz_fdiv_ui(n, r);
     if (remainder == 0) return false;
 
     bool is_order_large_enough = true;
     uint64_t current_remainder = remainder;
 
-    // Rzutowanie na 128-bitów chroni przed przepełnieniem (overflow) przy potęgowaniu
+// Rzutowanie na 128-bitów chroni przed przepełnieniem (overflow) przy potęgowaniu
     for (uint64_t k = 1; k <= bound; k++) {
         if (current_remainder == 1) {
             is_order_large_enough = false;
@@ -213,8 +212,8 @@ while(true) {
 Zastosowanie natywnego typu `__uint128_t` chroni obliczenia potęgowe przed 
 przepełnieniem bez konieczności kosztownego angażowania struktur GMP wewnątrz 
 tej pętli. Stanowi to zarazem ostateczną barierę sprzętową kodu – wymusza, 
-aby parametr $r$ mieścił się w rejestrze 64-bitowym, co teoretycznie pozwala 
-na walidację liczb o rozmiarach rzędu 4 miliardów bitów.
+aby parametr $r$ mieścił się w rejestrze 64-bitowym, co ustawia teoretyczny limit
+rozmiaru testowanych liczb na rząd 4 miliardów bitów.
 
 = Wydajność Obliczeniowa i Ograniczenia
 
@@ -228,15 +227,16 @@ rozmiarze 64 bitów, wartość parametru $r$ oscyluje w granicach 5000. Podniesi
 takiego wielomianu do kwadratu wymusza wykonanie minimum 25 milionów operacji 
 dodawania i mnożenia w strukturach GMP na każdą iterację potęgowania binarnego. 
 Z uwagi na konieczność wykonania około 96 takich kroków dla 64 bitów, procesor 
-musi przetworzyć miliardy niskopoziomowych instrukcji asemblerowych.
+musi przetworzyć miliardy niskopoziomowych instrukcji.
 
-W warunkach testowych, pełne sprawdzenie 64-bitowej liczby pierwszej zajmuje 
-około 27 sekund na procesorze AMD Ryzen 7 5800X. Pokazuje to ogromne wymagania 
+W warunkach testowych, pełne sprawdzenie 32-bitowej liczby pierwszej zajmuje 
+około 10 minut na procesorze AMD Ryzen 7 5800X. Pokazuje to ogromne wymagania 
 obliczeniowe bezwarunkowego testu AKS i wyjaśnia, dlaczego w kryptografii 
 produkcyjnej (np. generowanie kluczy RSA) wciąż powszechnie stosuje się 
-probabilistyczny test Millera-Rabina. Wersje zaawansowane wymagają wdrożenia 
-mnożenia opartego na Szybkiej Transformacie Fouriera (FFT) w celu zejścia do 
-złożoności $O(r log r)$, co jednak znacząco komplikuje architekturę pamięciową.
+probabilistyczny test Millera-Rabina. Wersje zaawansowane testu AKS wymagają wdrożenia 
+mnożenia opartego na Szybkiej Transformacie Fouriera (FFT) w celu obniżenia 
+złożoności operacji mnożenia wielomianów do $O(r log r)$, co jednak znacząco
+komplikuje architekturę pamięciową.
 
 = Wpływ Hipotezy Agrawala na Efektywność Algorytmu
 
@@ -265,30 +265,46 @@ wykonalne na domowym komputerze osobistym.
 = Analiza Pomiarów Empirycznych
 
 W celu dokładnego zbadania charakterystyki skalowania czasowego mojego 
-programu, przeprowadziłem serię pomiarów dla trzech dostępnych trybów: testu 
-naiwnego $O(sqrt(n))$, ścisłego dowodu AKS oraz trybu opartego na wspomnianej 
-hipotezie Agrawala. Wyniki zestawiono na poniższym wykresie.
+programu, przeprowadziłem rozszerzoną serię pomiarów. Z uwagi na drastyczne 
+różnice w złożoności obliczeniowej, wyniki wizualizacji podzieliłem na dwa 
+niezależne wykresy (z osią czasu w skali logarytmicznej).
+
+Pierwszy z nich analizuje liczby o rozmiarze do 32 bitów i zestawia ze 
+sobą wszystkie trzy badane warianty.
 
 #figure(
-  image("aks_benchmark_results.png", width: 90%),
-  caption: [Porównanie wydajności zaimplementowanych trybów testowych.]
+  image("images/aks_benchmark_strict.png", width: 90%),
+  caption: [Porównanie wydajności wszystkich trybów (do 32 bitów).]
 )
 
-Wykres w skali logarytmicznej idealnie obrazuje ograniczenia poszczególnych 
-metod. Podejście naiwne $O(sqrt(n))$, choć bezkonkurencyjne dla małych danych, 
-wykazuje gwałtowny, wykładniczy wzrost czasu wykonania. Już w okolicy 28-30 bitów 
-staje się ono całkowicie nieefektywne w pesymistycznych scenariuszach testowych.
+Jak widać na powyższym wykresie, klasyczny, bezwarunkowy algorytm AKS 
+cechuje się stabilniejszą krzywą, jednak jego potężny narzut początkowy 
+(związany z inicjalizacją struktur i ogromnymi limitami pętli) sprawia, że 
+przegrywa on z podejściem naiwnym w badanym zakresie. 
+Zastosowanie pełnego dowodu matematycznego dla liczb większych niż 32 bity 
+staje się na domowym sprzęcie skrajnie niepraktyczne (wymagałoby godzin 
+obliczeń), dlatego na tym etapie algorytm ten wyłączono z dalszych testów.
 
-Klasyczny, pełny algorytm AKS cechuje się znacznie stabilniejszą krzywą wzrostu, 
-jednak jego wysoki koszt początkowy (wynikający z obsługi pamięci GMP i pętli 
-wielu świadków $a$) powoduje, że przegrywa on z podejściem naiwnym aż do 
-momentu osiągnięcia granicy około 28 bitów. Dopiero powyżej tej wartości ujawnia 
-się przewaga wielomianowej natury algorytmu. Zastosowanie flagi 
-`--use-unproven` (hipoteza Agrawala) całkowicie eliminuje ten problem, przesuwając 
-krzywą czasową o kilka rzędów wielkości w dół i pozwalając na swobodne testowanie 
-dużych struktur danych.
+Drugi wykres przedstawia bezpośredni pojedynek między algorytmem naiwnym 
+a testem AKS opartym na hipotezie Agrawala, rozszerzony aż do wielkich 
+liczb 74-bitowych.
 
-#pagebreak()
+#figure(
+  image("images/aks_benchmark_extended.png", width: 90%),
+  caption: [Zależność czasu od rozmiaru liczby i punkt przecięcia (do 74 bitów).]
+)
+
+Rozszerzona analiza fenomenalnie obrazuje absolutną przewagę złożoności 
+wielomianowej nad wykładniczą. Podejście naiwne wykazuje 
+gwałtowny wzrost na wykresie. Przy 64 bitach obserwujemy przecięcie obu wykresów – oba algorytmy wymagały w okolicach 23 sekund na 
+weryfikację liczby. 
+
+Jednak wystarczyło powiększyć badaną wartość do 74 bitów, 
+by czas wykonania algorytmu naiwnego poszybował w dziesiątki minut z powodu 
+konieczności wykonania miliardów iteracji. W tym samym czasie, czas 
+rozwiązania dla zoptymalizowanego testu AKS wzrósł zaledwie marginalnie. 
+Stanowi to definitywne i ostateczne zwycięstwo optymalizacji matematycznej 
+nad surową siłą obliczeniową procesora.
 = Literatura
 
 #v(0.5em)
@@ -296,5 +312,3 @@ dużych struktur danych.
 #v(0.5em)
 
 + [Agrawal2004] M. Agrawal, N. Kayal, N. Saxena, "PRIMES is in P", _Annals of Mathematics_, 160, 781-793, 2004.
-+ [Menezes1996] A. J. Menezes, P. C. van Oorschot, S. A. Vanstone, _Handbook of Applied Cryptography_, CRC Press, 1996.
-+ [Wobst2002] R. Wobst, _Kryptologia: budowa i łamanie zabezpieczeń_, Wydawnictwo EXIT, Warszawa, 2002.
