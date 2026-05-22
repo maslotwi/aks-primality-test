@@ -13,7 +13,7 @@ Pełen opis matematyczny, analiza złożoności oraz omówienie wprowadzonych op
 ## Wymagania
 
 Do skompilowania projektu potrzebne są:
-* Kompilator języka C (konfiguracja napisana pod `Clang`)
+* Kompilator języka C (konfiguracja napisana pod `Clang`, ale `GCC` również będzie działać)
 * `CMake`
 * Biblioteka `GMP` (w systemach Debian/Ubuntu: `sudo apt-get install libgmp-dev`)
 
